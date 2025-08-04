@@ -1,3 +1,22 @@
+---
+
+# 📁 PowerPilot-GPT Repository Structure
+
+```
+PowerPilot-GPT/
+│
+├── README.md
+├── launch_agent.py
+├── server.py
+├── openapi_template.json
+├── .gpt_instructions.txt
+├── requirements.txt
+└── assets/
+    └── powerpilot-logo.png (optional placeholder)
+```
+
+---
+
 ## 📄 1. `README.md`
 
 ```markdown
