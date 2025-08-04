@@ -1,5 +1,3 @@
----
-
 # 📁 PowerPilot-GPT Repository Structure
 
 ```
