@@ -1,0 +1,86 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PowerPilot API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://your-ngrok-url.ngrok.io"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Token"
+      }
+    },
+    "schemas": {}
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/run": {
+      "post": {
+        "operationId": "runPowerShellCommand",
+        "summary": "Run a PowerShell command on the local system",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "script": {
+                    "type": "string",
+                    "description": "PowerShell script to execute"
+                  }
+                },
+                "required": ["script"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PowerShell command executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "stdout": {
+                      "type": "string"
+                    },
+                    "stderr": {
+                      "type": "string"
+                    },
+                    "exitCode": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "504": {
+            "description": "Command timed out"
+          }
+        }
+      }
+    }
+  }
+}
