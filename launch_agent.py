@@ -1,171 +1,118 @@
-# --------------------------------------------
-# Auto-install required packages if missing
-# --------------------------------------------
-import sys
+import os
 import subprocess
+import sys
+import uuid
+import json
+import shutil
+import zipfile
+import urllib.request
+import time
+from pathlib import Path
 
-REQUIRED_PACKAGES = ["requests", "flask"]
-for package in REQUIRED_PACKAGES:
+# Constants
+PORT = 5000
+NGROK_FILENAME = "ngrok.exe"
+NGROK_ZIP = "ngrok.zip"
+NGROK_URL = "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip"
+NGROK_AUTHTOKEN = os.environ.get("NGROK_AUTHTOKEN")
+NGROK_PATH = Path(NGROK_FILENAME)
+OPENAPI_PATH = Path("openapi.json")
+SECRET_TOKEN_PATH = Path("secret_token.txt")
+SERVER_SCRIPT = "server.py"
+
+# Ensure ngrok is installed
+def download_ngrok():
+    print("[*] Downloading ngrok...")
+    urllib.request.urlretrieve(NGROK_URL, NGROK_ZIP)
+    with zipfile.ZipFile(NGROK_ZIP, 'r') as zip_ref:
+        zip_ref.extractall(".")
+    os.remove(NGROK_ZIP)
+    print("[+] ngrok downloaded successfully.")
+
+# Check if package is installed, else install
+def ensure_python_package(package):
     try:
         __import__(package)
     except ImportError:
-        print(f"📦 Installing missing package: {package}")
+        print(f"[*] Installing {package}...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
-# --------------------------------------------
-# Main script logic starts here
-# --------------------------------------------
-import os
-import time
-import zipfile
-import shutil
-import json
-import uuid
-from pathlib import Path
+# Ensure required packages
+ensure_python_package("requests")
+
 import requests
 
-# -----------------------------
-# Configuration
-# -----------------------------
-BASE_DIR = Path(__file__).parent.resolve()
-NGROK_DIR = BASE_DIR / "ngrok"
-NGROK_EXE = NGROK_DIR / "ngrok.exe"
-NGROK_ZIP_URL = "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip"
-AUTH_TOKEN_FILE = NGROK_DIR / "auth_token.txt"
-TOKEN_FILE = BASE_DIR / "secret_token.txt"
-FLASK_PORT = 8080
-OPENAPI_FILE = BASE_DIR / "openapi.json"
-
-# -----------------------------
-# Defender Exclusion (optional)
-# -----------------------------
-def offer_windows_defender_exclusion():
-    print("\n🛡️ Windows Defender may interfere with the script or ngrok.")
-    print(f"   Would you like to add a Defender exclusion for this folder?\n   → {BASE_DIR}")
-    choice = input("   Type 'yes' to proceed: ").strip().lower()
-    if choice == "yes":
-        try:
-            subprocess.run([
-                "powershell", "-NoProfile", "-Command",
-                f"Add-MpPreference -ExclusionPath '{BASE_DIR}'"
-            ], check=True)
-            print("✅ Exclusion added successfully.")
-        except Exception as e:
-            print(f"❌ Failed to add exclusion: {e}")
-    else:
-        print("⏭️ Skipping Defender exclusion.")
-
-# -----------------------------
-# Token Handling
-# -----------------------------
+# Generate a secure token
 def generate_token():
-    if TOKEN_FILE.exists():
-        return TOKEN_FILE.read_text().strip()
-    token = str(uuid.uuid4())
-    TOKEN_FILE.write_text(token)
-    print(f"🔐 New secret token generated and saved to: {TOKEN_FILE}")
+    token = uuid.uuid4().hex
+    SECRET_TOKEN_PATH.write_text(token, encoding="utf-8")
     return token
 
-def inject_token_into_server_py(token: str):
-    server_path = BASE_DIR / "server.py"
-    if not server_path.exists():
-        print("❌ server.py not found.")
-        return
+# Read or create token
+def get_token():
+    if SECRET_TOKEN_PATH.exists():
+        return SECRET_TOKEN_PATH.read_text().strip()
+    return generate_token()
 
-    contents = server_path.read_text(encoding="utf-8")
-    new_contents = []
-    replaced = False
-    for line in contents.splitlines():
-        if line.strip().startswith("SECRET_TOKEN"):
-            new_contents.append(f'SECRET_TOKEN = "{token}"  # auto-injected')
-            replaced = True
-        else:
-            new_contents.append(line)
-
-    if replaced:
-        server_path.write_text("\n".join(new_contents), encoding="utf-8")
-        print("🔐 Secret token injected into server.py.")
-    else:
-        print("⚠️ SECRET_TOKEN line not found in server.py.")
-
-# -----------------------------
-# Ngrok Setup
-# -----------------------------
-def download_ngrok():
-    print("📦 Downloading ngrok...")
-    zip_path = NGROK_DIR / "ngrok.zip"
-    NGROK_DIR.mkdir(parents=True, exist_ok=True)
-
-    with requests.get(NGROK_ZIP_URL, stream=True) as r:
-        with open(zip_path, "wb") as f:
-            shutil.copyfileobj(r.raw, f)
-
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(NGROK_DIR)
-
-    zip_path.unlink()
-    print("✅ Ngrok downloaded and extracted.")
-
-def configure_ngrok():
-    if not AUTH_TOKEN_FILE.exists():
-        print("🔐 Ngrok auth token not found.")
-        token = input("🔑 Enter your Ngrok auth token: ").strip()
-        subprocess.run([str(NGROK_EXE), "config", "add-authtoken", token], check=True)
-        AUTH_TOKEN_FILE.write_text(token)
-        print("✅ Ngrok authenticated.")
-    else:
-        print("🔐 Ngrok auth token already configured.")
-
-def start_ngrok_tunnel():
-    print("🌐 Starting ngrok tunnel...")
-    proc = subprocess.Popen([str(NGROK_EXE), "http", str(FLASK_PORT)], stdout=subprocess.DEVNULL)
+# Launch the local API server
+def launch_server():
+    print("[*] Launching PowerPilot local server...")
+    subprocess.Popen([sys.executable, SERVER_SCRIPT])
     time.sleep(3)
-    try:
-        resp = requests.get("http://localhost:4040/api/tunnels")
-        public_url = resp.json()["tunnels"][0]["public_url"]
-        print(f"✅ Ngrok URL: {public_url}")
-        return proc, public_url
-    except Exception as e:
-        print(f"❌ Failed to fetch ngrok URL: {e}")
-        proc.terminate()
-        return None, None
 
-# -----------------------------
-# Flask Server
-# -----------------------------
-def start_flask_server():
-    print("🚀 Starting Flask server...")
-    return subprocess.Popen(["python", "server.py"], cwd=str(BASE_DIR))
+# Start ngrok tunnel
+def start_ngrok():
+    if not NGROK_PATH.exists():
+        download_ngrok()
 
-# -----------------------------
-# OpenAPI Spec Generator
-# -----------------------------
-def write_openapi_json(public_url: str, token: str):
-    print("📝 Generating secure openapi.json...")
-    schema = {
+    print("[*] Starting ngrok tunnel...")
+    ngrok_cmd = [str(NGROK_PATH), "http", str(PORT)]
+    subprocess.Popen(ngrok_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Wait for ngrok to come online
+    public_url = None
+    for _ in range(20):
+        try:
+            resp = requests.get("http://localhost:4040/api/tunnels")
+            tunnels = resp.json().get("tunnels", [])
+            for tunnel in tunnels:
+                url = tunnel.get("public_url", "")
+                if url.startswith("http"):
+                    public_url = url
+                    break
+            if public_url:
+                break
+        except Exception:
+            time.sleep(1)
+
+    if not public_url:
+        print("[!] Failed to retrieve ngrok public URL. Is ngrok running?")
+        sys.exit(1)
+
+    # ✅ Force HTTPS for GPT compatibility
+    if public_url.startswith("http://"):
+        public_url = public_url.replace("http://", "https://")
+
+    print(f"[+] Ngrok tunnel: {public_url}")
+    return public_url
+
+# Generate and write full OpenAPI schema
+def write_openapi(public_url, token):
+    openapi = {
         "openapi": "3.1.0",
         "info": {
-            "title": "Local PowerShell Runner",
-            "version": "1.0.0"
+            "title": "PowerPilot API",
+            "version": "1.0.0",
+            "description": "Local PowerShell automation assistant using secure API access"
         },
-        "servers": [{"url": public_url}],
-        "components": {
-            "securitySchemes": {
-                "BearerAuth": {
-                    "type": "http",
-                    "scheme": "bearer",
-                    "bearerFormat": "Token"
-                }
-            },
-            "schemas": {}
-        },
-        "security": [{ "BearerAuth": [] }],
+        "servers": [
+            { "url": public_url }
+        ],
         "paths": {
             "/run": {
                 "post": {
                     "operationId": "runPowerShellCommand",
-                    "summary": "Run a PowerShell command locally",
-                    "security": [{ "BearerAuth": [] }],
+                    "summary": "Run a PowerShell script on the local system",
                     "requestBody": {
                         "required": True,
                         "content": {
@@ -175,7 +122,7 @@ def write_openapi_json(public_url: str, token: str):
                                     "properties": {
                                         "script": {
                                             "type": "string",
-                                            "description": "PowerShell script to execute"
+                                            "description": "The full PowerShell script or command to execute"
                                         }
                                     },
                                     "required": ["script"]
@@ -185,75 +132,69 @@ def write_openapi_json(public_url: str, token: str):
                     },
                     "responses": {
                         "200": {
-                            "description": "Command result",
+                            "description": "Successful execution",
                             "content": {
                                 "application/json": {
                                     "schema": {
                                         "type": "object",
                                         "properties": {
-                                            "stdout": {"type": "string"},
-                                            "stderr": {"type": "string"},
-                                            "exitCode": {"type": "integer"}
+                                            "stdout": { "type": "string" },
+                                            "stderr": { "type": "string" },
+                                            "exitCode": { "type": "integer" }
                                         }
                                     }
                                 }
                             }
                         },
-                        "401": {
-                            "description": "Unauthorized"
-                        }
+                        "400": { "description": "Bad request or script error" },
+                        "401": { "description": "Unauthorized" },
+                        "408": { "description": "Command timed out" }
                     }
                 }
             }
-        }
+        },
+        "components": {
+            "securitySchemes": {
+                "BearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer"
+                }
+            },
+            "schemas": {}
+        },
+        "security": [
+            {
+                "BearerAuth": []
+            }
+        ]
     }
-    with OPENAPI_FILE.open("w", encoding="utf-8") as f:
-        json.dump(schema, f, indent=2)
-    print(f"✅ openapi.json created at: {OPENAPI_FILE}")
 
-# -----------------------------
-# Main Routine
-# -----------------------------
+    with open(OPENAPI_PATH, "w", encoding="utf-8") as f:
+        json.dump(openapi, f, indent=2)
+
+    print("[✓] openapi.json created with live Ngrok endpoint.")
+
+# Optional: notify user about Defender
+def suggest_defender_exclusion():
+    print("\n⚠️  [INFO] If Windows Defender flags this tool, you may need to exclude this folder manually.")
+    print("   Recommended exclusion path:", os.getcwd())
+
+# Main logic
 def main():
-    offer_windows_defender_exclusion()
-    shared_secret = generate_token()
-    inject_token_into_server_py(shared_secret)
+    token = get_token()
+    launch_server()
+    public_url = start_ngrok()
+    write_openapi(public_url, token)
+    suggest_defender_exclusion()
+    print("\n[✅] PowerPilot is ready. Upload openapi.json to your Custom GPT Actions.")
+    print("[ℹ️] Ngrok and the server are running in the background.")
+    print("[🔒] Leave this window open while using PowerPilot.")
 
-    if not NGROK_EXE.exists():
-        download_ngrok()
-    configure_ngrok()
-
-    flask_proc = start_flask_server()
-    time.sleep(1)
-
-    ngrok_proc, ngrok_url = start_ngrok_tunnel()
-    if ngrok_url:
-        write_openapi_json(ngrok_url, shared_secret)
-
-        print("\n🔗 Upload the generated openapi.json when configuring your Custom GPT.")
-        print("🔐 Authentication Setup (REQUIRED in GPT Builder):")
-        print("   1. Scroll to the **Authentication** section above the Schema field.")
-        print("   2. Click **'Add authentication'**.")
-        print("   3. Choose:")
-        print("      - Type:       Bearer")
-        print("      - Location:   Header")
-        print("      - Name:       Authorization")
-        print("      - Value:      Bearer " + shared_secret)
-        print("   4. Click Save ✅")
-
-        print("\n📝 Authorization header (copy-paste ready):")
-        print(f"    Authorization: Bearer {shared_secret}")
-
-        print(f"\n📂 Token saved to: {TOKEN_FILE}")
-        print("🟢 Endpoint is live. Press Ctrl+C to stop.")
-        try:
-            flask_proc.wait()
-        except KeyboardInterrupt:
-            print("\n🛑 Shutting down...")
-            flask_proc.terminate()
-            ngrok_proc.terminate()
-    else:
-        flask_proc.terminate()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n[!] PowerPilot shutting down.")
 
 if __name__ == "__main__":
     main()
