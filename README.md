@@ -1,149 +1,171 @@
-# 🚀 PowerPilot 1.1 — Local GPT-Driven Automation with PowerShell & Python
+### 📘 `README.md` for PowerPilot v1.1
 
-**PowerPilot** is a secure, local-first automation framework that connects a Custom GPT to your Windows environment using a Python-powered API gateway and Ngrok tunnel. Version 1.1 is a complete overhaul of the original, focusing on robust script execution, enhanced observability, and deep integration support for PowerShell and Python workflows.
+```markdown
+# 🧠 PowerPilot – Secure Local GPT Automation via PowerShell
 
----
+PowerPilot is a **local-first automation assistant** powered by a Custom GPT that connects to your Windows machine and executes PowerShell commands using natural language. You control the server. You authenticate the access. It does the work.
 
-## 🔧 Features
-
-| Capability | Description |
-|------------|-------------|
-| ✅ GPT-Triggered Execution | Connects your Custom GPT to your Windows endpoint using Ngrok |
-| ✅ PowerShell API | GPT sends commands via the `/run` endpoint with secure authentication |
-| ✅ Secure API Token | Uses unique bearer token for every local deployment |
-| ✅ Full Logging | JSONL logs with rotation, compression, and retention limits |
-| ✅ Timeout Handling | Prevents runaway scripts (default: 30 seconds) |
-| ✅ Log Compression | Logs auto-rotate at 30MB and are zipped |
-| ✅ Rolling Log Retention | Old logs are pruned once 50MB total is exceeded |
-| ✅ GUI-Free Setup | No installer required — just run from PowerShell |
-| ✅ GPT-First UX | Designed from scratch for Custom GPT integration and usage
+> ⚡️ Think of it as ChatGPT wired into your OS — with full control, visibility, and safety.
 
 ---
 
-## 🔐 Security
+## 🚀 Features (v1.1)
 
-- All external access goes through Ngrok (HTTPS)
-- Token-based bearer authentication for every request
-- Temp PowerShell scripts are validated before execution and deleted after
+- ✅ **Secure Execution**: Bearer-token protected API
+- ✅ **Automatic OpenAPI Generation**: Live schema with ngrok URL
+- ✅ **Painless Setup**: One command to start everything
+- ✅ **Structured Logging**: JSON-per-line logs, gzipped & rotated
+- ✅ **Timeout Handling**: Prevents stuck or runaway scripts
+- ✅ **Portable**: Works from any local folder
+- ✅ **Private**: Nothing runs outside your machine
 
 ---
 
-## 📁 Folder Structure
+## 📂 Repository Structure
 
 ```
 PowerPilot-GPT/
-├── launch_agent.py         # Main setup + Ngrok launcher + schema generator
-├── server.py               # Flask API server for executing PowerShell commands
-├── openapi.json            # Automatically generated Custom GPT schema
-├── secret_token.txt        # Generated bearer token (keep secret!)
-├── logs/                   # JSONL logs with rotation and compression
+│
+├── launch_agent.py           # Launch server + tunnel + schema
+├── server.py                 # Flask server handling PowerShell
+├── openapi.json              # Generated OpenAPI schema
+├── secret_token.txt          # Bearer token stored here
+├── CHANGELOG.md              # Latest version changes
+├── README.md                 # This file
+├── logs/                     # Rotated, compressed JSON logs
+└── assets/                   # Optional logo
 ```
 
 ---
 
-## ⚙️ Setup
+## 🛠️ Setup Instructions
 
-> 💡 Only requirements: Python 3.10+ and Windows 10/11 (Pro recommended)
+### 1. Download & Run PowerPilot Agent
 
-### 1. Clone the Repo
-
-```bash
-git clone https://github.com/GhostwheeI/PowerPilot-GPT.git
-cd PowerPilot-GPT
-```
-
-### 2. Run It
+Open an elevated PowerShell terminal and run:
 
 ```powershell
+cd C:\Users\User\Documents\GPTAgent
 python launch_agent.py
 ```
 
-✅ This will:
-- Start your Flask server
-- Start Ngrok
-- Create `openapi.json`
-- Print the public HTTPS tunnel URL
-- Generate your bearer token in `secret_token.txt`
+This will:
 
-### 3. Upload to GPT
-
-- Go to [chat.openai.com/gpts](https://chat.openai.com/gpts)
-- Edit your Custom GPT
-- Under **Actions**, upload `openapi.json`
-- Under **Authentication**, choose:
-  - Type: `Bearer`
-  - Key: (paste the token from `secret_token.txt`)
-- Save and test the `/run` action
+- Install dependencies (`flask`, `requests`)
+- Download & initialize Ngrok
+- Generate a secure Bearer token
+- Create `openapi.json` with your live tunnel URL
+- Start the Flask API server at `http://127.0.0.1:5000`
 
 ---
 
-## 📊 Logs
+### 2. Create the Custom GPT
 
-All logs are written to `logs/current.jsonl` in JSON-per-line format for easy parsing. They include:
-- Type: `script_received`, `execution_result`, `timeout`, `auth_failure`
-- IP address (local)
-- Full stdout/stderr
-- Exit code
-- Duration
-
-Logs rotate when they exceed **30MB**, compress into `.gz`, and prune oldest logs beyond **50MB** total.
-
----
-
-## 📘 What's New in 1.1
-
-| Area | 1.0 | 1.1 |
-|------|-----|-----|
-| OpenAPI | Static file | Live-generated with Ngrok URL |
-| Auth | Hardcoded token | Unique token stored in file |
-| Logging | Minimal | JSONL + rotation + archive retention |
-| Execution | Basic PowerShell | Temp script with `Set-StrictMode`, full path |
-| Security | None | Bearer + HTTPS enforced |
-| Persistence | Manual | Ngrok + Flask kept alive |
-| Developer UX | Minimal | Setup, output, Defender warnings added |
-| Versioning | Manual | Structured versioning now supported |
+1. Go to [https://chat.openai.com/gpts/editor](https://chat.openai.com/gpts/editor)
+2. Name it: **PowerPilot**
+3. Upload the `openapi.json` that was just generated
+4. Under **Authentication**:
+   - Type: `Bearer`
+   - Location: `Header`
+   - Name: `Authorization`
+   - Value: `Bearer <your-token>` (from `secret_token.txt`)
+5. Paste in the contents of `.gpt_instructions.txt` into the **Instructions** field
+6. Save and Test
 
 ---
 
-## 🧠 Ideal Use Cases
+### 3. Use PowerPilot!
 
-- Execute PowerShell from GPT prompts
-- Create full automation suites
-- Integrate Python-based preprocessing, scripting, or conversion tools
-- Build frontend GUIs with a GPT-assisted backend (via CLI or codegen)
+Try prompts like:
 
----
-
-## 🔮 Future Plans
-
-- Optional `/runPythonScript` endpoint
-- Modular action support for running `.ps1`, `.py`, or `.exe` scripts
-- Auto-extract info from logs
-- GPT-guided script execution history + replay
+- `Show top 10 largest files on C:\`
+- `Scan for .ps1 files in Documents`
+- `Start-Service WinDefend`
+- `List scheduled tasks`
+- `Remove all files from Temp folder older than 14 days`
 
 ---
 
-## 🧼 Troubleshooting
+## 🧾 Logging System (v1.1+)
 
-- Defender blocking? Add an exclusion:
-  ```
-  C:\Path\To\PowerPilot-GPT
-  ```
-- Ngrok not working? Ensure it’s not firewalled or blocked.
-- Getting `401 Unauthorized`? Double-check the bearer token in your GPT config.
-- Ngrok URL expired? Just re-run `launch_agent.py`.
+- ✅ Logs stored in `logs/` folder
+- ✅ JSON-per-line format
+- ✅ Rotated after 30MB/file
+- ✅ Archived to `.gz`
+- ✅ Max folder size: 50MB (older logs deleted automatically)
 
 ---
 
-## 🧪 Version
+## 🛡️ Security
 
-- PowerPilot 1.1
-- OpenAPI: 3.1.0
-- Python 3.10+
-- GPT 4 or 4o compatible
+- ✅ Authenticated via Bearer token (stored in `secret_token.txt`)
+- ✅ Token is never hardcoded in source
+- ✅ HTTPS endpoint served through Ngrok
+- ✅ Flask server only accessible locally (127.0.0.1)
 
 ---
 
-## 🛡️ License
+## 🔁 Development Notes
 
-MIT — see [LICENSE](LICENSE)
+- PowerShell scripts are run with full error trapping and `Set-StrictMode`
+- The Ngrok tunnel is HTTPS-only and regenerates with every launch
+- The GPT relies solely on live server output — no simulated responses
+- All commands are executed from a temporary `.ps1` file
+
+---
+
+## ❗ Known Limitations
+
+- GPT must have access to live `openapi.json` + token
+- You must leave `launch_agent.py` running for full GPT interaction
+- Server should not be deployed to external machines without further hardening
+
+---
+
+## 🤝 Contributions
+
+PRs are welcome! You can improve logging, command parsing, or even help expand PowerPilot to support other shells like Bash or CMD.
+
+---
+
+> 💬 Need help or want to show off what PowerPilot built? Open a GitHub Issue or start a Discussion!
+
+```
+
+---
+
+## 🧾 2. Line-by-Line PowerShell Instructions to Create a GitHub Release
+
+This time, we’ll **tag the release in Git**, then create the release on GitHub from PowerShell:
+
+---
+
+### 🪄 Step-by-Step (PowerShell)
+
+> Assumes you’re on branch `v1.1` already.
+
+1. **Create tag for v1.1:**
+
+```powershell
+git tag v1.1
+```
+
+2. **Push tag to GitHub:**
+
+```powershell
+git push origin v1.1
+```
+
+3. **Visit the GitHub Releases UI:**
+
+```powershell
+Start-Process "https://github.com/GhostwheeI/PowerPilot-GPT/releases/new"
+```
+
+4. In the webpage:
+   - **Tag version**: `v1.1`
+   - **Target**: `v1.1`
+   - **Release title**: `PowerPilot v1.1 — Logging, Security, API Improvements`
+   - **Paste the release body** from earlier
+
+Then hit **"Publish release"** 🎉
