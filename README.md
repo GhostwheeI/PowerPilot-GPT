@@ -21,20 +21,7 @@ PowerPilot is a **local-first automation assistant** powered by a Custom GPT tha
 
 ---
 
-## 📂 Repository Structure
-
-```
-PowerPilot-GPT/
-│
-├── launch_agent.py           # Launch server + tunnel + schema
-├── server.py                 # Flask server handling PowerShell
-├── openapi.json              # Generated OpenAPI schema
-├── secret_token.txt          # Bearer token stored here
-├── CHANGELOG.md              # Latest version changes
-├── README.md                 # This file
-├── logs/                     # Rotated, compressed JSON logs
-└── assets/                   # Optional logo
-```
+<pre lang="markdown"> <details> <summary>📂 Repository Structure</summary> ``` PowerPilot-GPT/ ├── launch_agent.py # Launches server + Ngrok + schema ├── server.py # Flask API for PowerShell commands ├── openapi.json # Action schema for GPT (auto-generated) ├── secret_token.txt # Secure token used by GPT ├── CHANGELOG.md # Version changelog ├── README.md # You're reading it ├── logs/ # Rotated .jsonl.gz log files └── assets/ # Optional logo or extras ``` </details> </pre>
 
 ---
 
