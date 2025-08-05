@@ -1,5 +1,3 @@
----
-
 ### 📘 `README.md` for PowerPilot v1.1
 
 ```markdown
@@ -171,5 +169,3 @@ Start-Process "https://github.com/GhostwheeI/PowerPilot-GPT/releases/new"
    - **Paste the release body** from earlier
 
 Then hit **"Publish release"** 🎉
-
----
